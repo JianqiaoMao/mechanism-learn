@@ -7,9 +7,9 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 import time
-img_dir = "./test_data/ICH_data/image/"
-label_dir = "./test_data/ICH_data/label/"
-table_data_dir = "./test_data/ICH_data/"
+img_dir = "../../test_data/ICH_data/ct_clean/"
+label_dir = "../../test_data/ICH_data/label_clean/"
+table_data_dir = "../../test_data/ICH_data/"
 imgs_names = os.listdir(img_dir)
 label_names = os.listdir(label_dir)
 table_name = "hemorrhage_diagnosis_raw_ct.csv"
