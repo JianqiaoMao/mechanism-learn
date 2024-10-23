@@ -3,8 +3,6 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from scipy.stats import linregress
-syn_data_dir = "E:/Happiness_source/PhD/UoB/projects/Mechanism Learning/code/dataset/simu_data/synthetic_data/"
-
 #%% Simu Data 1: frontdoor_discY_contZ_contX_discU
 np.random.seed(1)
 testcase_dir = "frontdoor_discY_contZ_contX_discU/"
@@ -97,21 +95,21 @@ mux[~i, 1] -= 3*qux
 X_uncf_test = mux + np.random.randn(n_samples_unconfounded_test, 2)
 
 # Save data
-pd.DataFrame(U_train_conf).to_csv(syn_data_dir + testcase_dir + "U_train_conf.csv", index = False)
-pd.DataFrame(X_train_conf).to_csv(syn_data_dir + testcase_dir + "X_train_conf.csv", index = False)
-pd.DataFrame(Y_train_conf).to_csv(syn_data_dir + testcase_dir + "Y_train_conf.csv", index = False)
-pd.DataFrame(Z_train_conf).to_csv(syn_data_dir + testcase_dir + "Z_train_conf.csv", index = False)
+pd.DataFrame(U_train_conf).to_csv(testcase_dir + "U_train_conf.csv", index = False)
+pd.DataFrame(X_train_conf).to_csv(testcase_dir + "X_train_conf.csv", index = False)
+pd.DataFrame(Y_train_conf).to_csv(testcase_dir + "Y_train_conf.csv", index = False)
+pd.DataFrame(Z_train_conf).to_csv(testcase_dir + "Z_train_conf.csv", index = False)
 
-pd.DataFrame(U_test_conf).to_csv(syn_data_dir + testcase_dir + "U_test_conf.csv", index = False)
-pd.DataFrame(X_test_conf).to_csv(syn_data_dir + testcase_dir + "X_test_conf.csv", index = False)
-pd.DataFrame(Y_test_conf).to_csv(syn_data_dir + testcase_dir + "Y_test_conf.csv", index = False)
-pd.DataFrame(Z_test_conf).to_csv(syn_data_dir + testcase_dir + "Z_test_conf.csv", index = False)
+pd.DataFrame(U_test_conf).to_csv(testcase_dir + "U_test_conf.csv", index = False)
+pd.DataFrame(X_test_conf).to_csv(testcase_dir + "X_test_conf.csv", index = False)
+pd.DataFrame(Y_test_conf).to_csv(testcase_dir + "Y_test_conf.csv", index = False)
+pd.DataFrame(Z_test_conf).to_csv(testcase_dir + "Z_test_conf.csv", index = False)
 
 
-pd.DataFrame(U_uncf_test).to_csv(syn_data_dir + testcase_dir + "U_test_unconf.csv", index = False)
-pd.DataFrame(X_uncf_test).to_csv(syn_data_dir + testcase_dir + "X_test_unconf.csv", index = False)
-pd.DataFrame(Y_uncf_test).to_csv(syn_data_dir + testcase_dir + "Y_test_unconf.csv", index = False)
-pd.DataFrame(Z_uncf_test).to_csv(syn_data_dir + testcase_dir + "Z_test_unconf.csv", index = False)
+pd.DataFrame(U_uncf_test).to_csv(testcase_dir + "U_test_unconf.csv", index = False)
+pd.DataFrame(X_uncf_test).to_csv(testcase_dir + "X_test_unconf.csv", index = False)
+pd.DataFrame(Y_uncf_test).to_csv(testcase_dir + "Y_test_unconf.csv", index = False)
+pd.DataFrame(Z_uncf_test).to_csv(testcase_dir + "Z_test_unconf.csv", index = False)
 
 #%% Simu Data 2: frontdoor_ContY_contZ_contX_contU
 
@@ -163,20 +161,20 @@ Z_test_unconf = b * Y_test_unconf + noise_Z
 noise_X = np.random.normal(loc=0, scale=1, size=n_samples_unconfounded_test)
 X_test_unconf = d * Z_test_unconf + noise_X
 
-pd.DataFrame(X_train_conf).to_csv(syn_data_dir + testcase_dir + "X_train_conf.csv", index = False)
-pd.DataFrame(Y_train_conf).to_csv(syn_data_dir + testcase_dir + "Y_train_conf.csv", index = False)
-pd.DataFrame(U_train_conf).to_csv(syn_data_dir + testcase_dir + "U_train_conf.csv", index = False)
-pd.DataFrame(Z_train_conf).to_csv(syn_data_dir + testcase_dir + "Z_train_conf.csv", index = False)
+pd.DataFrame(X_train_conf).to_csv(testcase_dir + "X_train_conf.csv", index = False)
+pd.DataFrame(Y_train_conf).to_csv(testcase_dir + "Y_train_conf.csv", index = False)
+pd.DataFrame(U_train_conf).to_csv(testcase_dir + "U_train_conf.csv", index = False)
+pd.DataFrame(Z_train_conf).to_csv(testcase_dir + "Z_train_conf.csv", index = False)
 
-pd.DataFrame(X_test_conf).to_csv(syn_data_dir + testcase_dir + "X_test_conf.csv", index = False)
-pd.DataFrame(Y_test_conf).to_csv(syn_data_dir + testcase_dir + "Y_test_conf.csv", index = False)
-pd.DataFrame(U_test_conf).to_csv(syn_data_dir + testcase_dir + "U_test_conf.csv", index = False)
-pd.DataFrame(Z_test_conf).to_csv(syn_data_dir + testcase_dir + "Z_test_conf.csv", index = False)
+pd.DataFrame(X_test_conf).to_csv(testcase_dir + "X_test_conf.csv", index = False)
+pd.DataFrame(Y_test_conf).to_csv(testcase_dir + "Y_test_conf.csv", index = False)
+pd.DataFrame(U_test_conf).to_csv(testcase_dir + "U_test_conf.csv", index = False)
+pd.DataFrame(Z_test_conf).to_csv(testcase_dir + "Z_test_conf.csv", index = False)
 
-pd.DataFrame(X_test_unconf).to_csv(syn_data_dir + testcase_dir + "X_test_unconf.csv", index = False)
-pd.DataFrame(Y_test_unconf).to_csv(syn_data_dir + testcase_dir + "Y_test_unconf.csv", index = False)
-pd.DataFrame(U_test_unconf).to_csv(syn_data_dir + testcase_dir + "U_test_unconf.csv", index = False)
-pd.DataFrame(Z_test_unconf).to_csv(syn_data_dir + testcase_dir + "Z_test_unconf.csv", index = False)
+pd.DataFrame(X_test_unconf).to_csv(testcase_dir + "X_test_unconf.csv", index = False)
+pd.DataFrame(Y_test_unconf).to_csv(testcase_dir + "Y_test_unconf.csv", index = False)
+pd.DataFrame(U_test_unconf).to_csv(testcase_dir + "U_test_unconf.csv", index = False)
+pd.DataFrame(Z_test_unconf).to_csv(testcase_dir + "Z_test_unconf.csv", index = False)
 
 
 # %%
