@@ -5,5 +5,5 @@ Mechanism-learn is a simple method to deconfound observational data such that an
 
 
 <div style="text-align: center;">
-  <img src="https://github.com/JianqiaoMao/mechanism-learn/blob/main/fiigures/mechanism%20learning.png" width="900">
+  <img src="https://github.com/JianqiaoMao/mechanism-learn/blob/main/fiigures/mechanism%20learning.png" width="1100">
 </div>
