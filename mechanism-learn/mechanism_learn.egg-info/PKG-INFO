@@ -1,0 +1,12 @@
+Metadata-Version: 2.1
+Name: mechanism-learn
+Version: 1.0.0
+Summary: Mechanism-learn is a simple method which uses front-door causal bootstrapping to deconfound observational data such that any appropriate machine learning model is forced to learn predictive relationships between effects and their causes (reverse causal inference), despite the potential presence of multiple unknown and unmeasured confounding. The library is compatible with most existing ML deployment such as models built with Scikit-learn and Keras.
+Home-page: https://github.com/JianqiaoMao/CausalBootstrapping
+Author: Jianqiao Mao
+Author-email: jxm1417@student.bham.ac.uk
+License: GPL-3.0
+Requires-Dist: causalBootstrapping
+Requires-Dist: grapl-causal
+Requires-Dist: scipy
+Requires-Dist: graphviz
