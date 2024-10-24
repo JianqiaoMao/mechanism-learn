@@ -264,7 +264,7 @@ Report of confonded model:
 weighted avg       0.85      0.85      0.85      1000
 ```
 
-In terms of performance evaluation metrics the SVM trained using mechanism learning, exceeds the SVM trained using classical supervised learning on the non-confounded dataset by $5\%$ accuracy, retaining stable predictive accuracy across both confounded and non-confounded datasets. On the contrary, although the classical supervised SVM performs about as well as the deconfounded SVM in the confounded dataset, its performance declines significantly on the non-confounded dataset. This is because classical supervised learning is biased by the influence of confounding, reporting misleading accuracy on the original (confounded) test set.
+In terms of performance evaluation metrics the SVM trained using mechanism learning, exceeds the SVM trained using classical supervised learning on the non-confounded dataset by 5% accuracy, retaining stable predictive accuracy across both confounded and non-confounded datasets. On the contrary, although the classical supervised SVM performs about as well as the deconfounded SVM in the confounded dataset, its performance declines significantly on the non-confounded dataset. This is because classical supervised learning is biased by the influence of confounding, reporting misleading accuracy on the original (confounded) test set.
 
 ### Reference
 
