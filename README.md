@@ -3,7 +3,7 @@ Mechanism-learn is a user-friendly Python library which uses front-door causal b
 
 ## Mechanism Learning
 
-one of the major limitations of applying ML methods in critical, high-stakes applications such as decision-making in medicine, is their "causal blindness", that is, ML models are, by design, pattern-recognition algorithms which learn potentially spurious, non-causal associations between the feature and target variables. 
+One of the major limitations of applying ML methods in critical, high-stakes applications such as decision-making in medicine, is their "causal blindness", that is, ML models are, by design, pattern-recognition algorithms which learn potentially spurious, non-causal associations between the feature and target variables. 
 
 <div align="center">
   <img src="./figures/mechanism%20learning.png" alt="figure1" width="1100">
