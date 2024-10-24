@@ -196,23 +196,23 @@ The confounded SVM, trained using classical supervised learning, is severely aff
 print("Test on the non-confounded test set:")
 y_pred_deconf_unconf = clf_deconf.predict(X_test_unconf)
 print("Report of de-confonded model:")
-print(classification_report(Y_test_unconf, y_pred_deconf_unconf, digits = 4))
+print(classification_report(Y_test_unconf, y_pred_deconf_unconf))
 
 print("-"*20)
 y_pred_conf_unconf = clf_conf.predict(X_test_unconf)
 print("Report of confonded model:")
-print(classification_report(Y_test_unconf, y_pred_conf_unconf, digits = 4))
+print(classification_report(Y_test_unconf, y_pred_conf_unconf))
 
 print("*"*30)
 print("Test on the confounded test set:")
 y_pred_deconf_conf = clf_deconf.predict(X_test_conf)
 print("Report of de-confonded model:")
-print(classification_report(Y_test_conf, y_pred_deconf_conf, digits = 4))
+print(classification_report(Y_test_conf, y_pred_deconf_conf))
 
 print("-"*20)
 y_pred_conf_conf = clf_conf.predict(X_test_conf)
 print("Report of confonded model:")
-print(classification_report(Y_test_conf, y_pred_conf_conf, digits = 4))
+print(classification_report(Y_test_conf, y_pred_conf_conf))
 ```
 
 The expected output should be similar to:
