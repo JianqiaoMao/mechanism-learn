@@ -1,8 +1,7 @@
 #%% Importing libraries
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-from scipy.stats import linregress
+
 #%% Simu Data 1: frontdoor_discY_contZ_contX_discU
 np.random.seed(1)
 testcase_dir = "frontdoor_discY_contZ_contX_discU/"
