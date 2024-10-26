@@ -4,7 +4,7 @@ from distEst_lib import MultivarContiDistributionEstimator
 import numpy as np
 #%%
 def mechanism_classifier(cause_data, 
-                         mediator_data, 
+                         mechanism_data, 
                          effect_data, 
                          ml_model, 
                          dist_map = None, 
@@ -19,8 +19,8 @@ def mechanism_classifier(cause_data,
     Parameters:
     cause_data: dict
         A dictionary containing the cause variable data. The key is the variable name and the value is a n-d data array.
-    mediator_data: dict
-        A dictionary containing the mediator variable data. The key is the variable name and the value is a n-d data array.
+    mechanism_data: dict
+        A dictionary containing the mechanism variable data. The key is the variable name and the value is a n-d data array.
     effect_data: dict   
         A dictionary containing the effect variable data. The key is the variable name and the value is a n-d data array.
     ml_model: object
@@ -46,21 +46,21 @@ def mechanism_classifier(cause_data,
     """
     
     cause_var_name = list(cause_data.keys())[0]
-    mediator_var_name = list(mediator_data.keys())[0]   
+    mechanism_var_name = list(mechanism_data.keys())[0]   
     effect_var_name = list(effect_data.keys())[0]
 
     Y = cause_data[cause_var_name]   
     X = effect_data[effect_var_name] 
-    Z = mediator_data[mediator_var_name]
+    Z = mechanism_data[mechanism_var_name]
 
     if dist_map is None:
         
         cause_data = {"Y": Y}
-        mediator_data = {"Z": Z}
+        mechanism_data = {"Z": Z}
         effect_data = {"X": X}
         
         cause_var_name = list(cause_data.keys())[0]
-        mediator_var_name = list(mediator_data.keys())[0]   
+        mechanism_var_name = list(mechanism_data.keys())[0]   
         effect_var_name = list(effect_data.keys())[0]
         
         joint_yz_data = np.concatenate((Y, Z), axis = 1)
@@ -86,7 +86,7 @@ def mechanism_classifier(cause_data,
         cb_data = {}
         for i, interv_value in enumerate(cause_unique):
             cb_data_simu = cb.frontdoor_simu(cause_data = cause_data,
-                                             mediator_data = mediator_data,
+                                             mediator_data = mechanism_data,
                                              effect_data = effect_data,
                                              dist_map = dist_map,
                                              mode = cb_mode,
@@ -99,7 +99,7 @@ def mechanism_classifier(cause_data,
                     cb_data[key] = np.vstack((cb_data[key], cb_data_simu[key]))
     else:
         cb_data = cb.frontdoor_simple(cause_data = cause_data,
-                                      mediator_data = mediator_data,
+                                      mediator_data = mechanism_data,
                                       effect_data = effect_data,
                                       dist_map = dist_map,
                                       mode = cb_mode)
@@ -113,7 +113,7 @@ def mechanism_classifier(cause_data,
         return ml_model
 
 def mechanism_regressor(cause_data, 
-                        mediator_data, 
+                        mechanism_data, 
                         effect_data, 
                         ml_model, 
                         intv_value = None,
@@ -128,8 +128,8 @@ def mechanism_regressor(cause_data,
     Parameters:
     cause_data: dict
         A dictionary containing the cause variable data. The key is the variable name and the value is a n-d data array.
-    mediator_data: dict
-        A dictionary containing the mediator variable data. The key is the variable name and the value is a n-d data array.
+    mechanism_data: dict
+        A dictionary containing the mechanism variable data. The key is the variable name and the value is a n-d data array.
     effect_data: dict
         A dictionary containing the effect variable data. The key is the variable name and the value is a n-d data array.
     ml_model: object
@@ -155,23 +155,23 @@ def mechanism_regressor(cause_data,
     """
     
     cause_var_name = list(cause_data.keys())[0]
-    mediator_var_name = list(mediator_data.keys())[0]   
+    mechanism_var_name = list(mechanism_data.keys())[0]   
     effect_var_name = list(effect_data.keys())[0]
 
     Y = cause_data[cause_var_name]   
     X = effect_data[effect_var_name] 
-    Z = mediator_data[mediator_var_name]
+    Z = mechanism_data[mechanism_var_name]
 
     N = Y.shape[0]
     
     if dist_map is None:
         
         cause_data = {"Y": Y}
-        mediator_data = {"Z": Z}
+        mechanism_data = {"Z": Z}
         effect_data = {"X": X}
         
         cause_var_name = list(cause_data.keys())[0]
-        mediator_var_name = list(mediator_data.keys())[0]   
+        mechanism_var_name = list(mechanism_data.keys())[0]   
         effect_var_name = list(effect_data.keys())[0]
         
         joint_yz_data = np.concatenate((Y, Z), axis = 1)
@@ -201,7 +201,7 @@ def mechanism_regressor(cause_data,
     for i, interv_value in enumerate(intv_value[:-1]):
         cb_data_intv = cb.frontdoor_simu(cause_data = cause_data, 
                                          effect_data = effect_data, 
-                                         mediator_data = mediator_data, 
+                                         mediator_data = mechanism_data, 
                                          dist_map = dist_map, 
                                          intv_value = [interv_value for j in range(N)], 
                                          n_sample = n_samples[i], 
