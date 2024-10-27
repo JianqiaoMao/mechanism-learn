@@ -91,7 +91,7 @@ Here, we have a confounded training set which mimics some observational dataset 
 3.  Train a deconfounded SVM classifier using mechanism learning
 ```python
 clf_deconf, deconf_data = ml.mechanism_classifier(cause_data = {"Y": Y_train_conf}, 
-                                                  mediator_data = {"Z": Z_train_conf},
+                                                  mechanism_data = {"Z": Z_train_conf},
                                                   effect_data = {"X": X_train_conf}, 
                                                   n_bins = [0,20],
                                                   ml_model = svm.SVC(kernel = 'linear', C=5), 
