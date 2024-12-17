@@ -26,7 +26,14 @@ For example, in radiology, there are unique morphological features caused by dif
 
 Please use one of the following to cite the code of this repository.
 
-(leave blank for now)
+```
+@article{mao2024mechanism,
+  title={Mechanism learning: Reverse causal inference in the presence of multiple unknown confounding through front-door causal bootstrapping},
+  author={Mao, Jianqiao and Little, Max A},
+  journal={arXiv preprint arXiv:2410.20057},
+  year={2024}
+}
+```
 
 ## Installation and getting started
 
