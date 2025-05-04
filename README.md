@@ -6,7 +6,7 @@ Mechanism-learn is a user-friendly Python library which uses front-door causal b
 One of the major limitations of applying ML methods in critical, high-stakes applications such as decision-making in medicine, is their "causal blindness", that is, ML models are, by design, pattern-recognition algorithms which learn potentially spurious, non-causal associations between the feature and target variables. 
 
 <div align="center">
-  <img src="./figures/mechanism%20learnin.png" alt="figure1" width="1100">
+  <img src="./figures/mechanism%20learning.png" alt="figure1" width="1100">
 </div>
 
 <p align="left"><strong>Figure 1.</strong> Mechanism learning (b) is a novel, simple and widely applicable solution to the problem of reverse causal inference in the presence of multiple unknown confounding, using arbitrary supervised ML algorithms to predict nonlinear effect-cause relationships from potentially high-dimensional effects. The causal scenario is represented by the ubiquitous front-door causal graph (a). There are multiple, unmeasured/unknown confounding paths between $Y$ and $X$ (bi-directed, dashed arrow). The classic causal inference direction is the causal path from $Y$ to $X$ via $Z$ (blue half arrow); reverse causal inference infers causes $Y$ from effects $X$ (red half arrow).</p>
