@@ -122,21 +122,4 @@ Z_test_unconf = pd.DataFrame(Z[2])
 X_test_unconf.to_csv(frontdoor_data_dir + "X_test_unconf.csv", header=None, index=None)
 Y_test_unconf.to_csv(frontdoor_data_dir + "Y_test_unconf.csv", header=None, index=None)
 Z_test_unconf.to_csv(frontdoor_data_dir + "Z_test_unconf.csv", header=None, index=None)
-# %% Save as images
-y_map = {1: "2", 2: "6"}
-# unconfounded images
-img_unconf_dir = frontdoor_data_dir + "images/unconfounded/"
-for i in range(X_test_unconf.shape[0]):
-    img = X_test_unconf.iloc[i].to_numpy().reshape(Nw, Nh).astype(np.uint8)
-    cv.imwrite(img_unconf_dir + y_map[Y_test_unconf.iloc[i].values[0]] + f"/img_{i}.png", img)
 
-# confounded images
-img_conf_dir = frontdoor_data_dir + "images/confounded/"
-for i in range(X_test_conf.shape[0]):
-    img = X_test_conf.iloc[i].to_numpy().reshape(Nw, Nh).astype(np.uint8)
-    cv.imwrite(img_conf_dir + y_map[Y_test_conf.iloc[i].values[0]] + f"/img_{i}.png", img)
-
-# %%
-import pywt
-
-# %%

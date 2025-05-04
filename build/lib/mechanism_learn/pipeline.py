@@ -216,7 +216,7 @@ class mechanism_learning_process:
                 deconf_X = np.concatenate((deconf_X, deconf_samples_intv_i), axis = 0)
                 deconf_Y = np.concatenate((deconf_Y, np.array([intv_value for j in range(n_samples[i])]).reshape(-1,1)), axis = 0)
         if return_samples:   
-            sample_idx = np.arange(self.deconf_X.shape[0])
+            sample_idx = np.arange(deconf_X.shape[0])
             np.random.shuffle(sample_idx)
             self.deconf_X = deconf_X[sample_idx]
             self.deconf_Y = deconf_Y[sample_idx]
