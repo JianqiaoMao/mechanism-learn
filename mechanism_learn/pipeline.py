@@ -221,17 +221,16 @@ class mechanism_learning_process:
                                                                cov_reg=cov_reg[i], min_variance_value=min_variance_value[i],
                                                                random_seed=random_seed, show_progress_bar=show_gmm_progress_bar)   
             if return_model:
-                cwgmms.write(i, intv_value, pi_est_intv, mus_est_intv, Sigmas_est_intv, cov_type[i])  
-            if return_samples:     
-                deconf_samples_intv_i = gmms.sample_from_gmm(pi_est_intv, mus_est_intv, Sigmas_est_intv,
-                                                            n_samples[i], cov_type=cov_type[i])
-                deconf_X = np.concatenate((deconf_X, deconf_samples_intv_i), axis = 0)
-                deconf_Y = np.concatenate((deconf_Y, np.array([intv_value for j in range(n_samples[i])]).reshape(-1,1)), axis = 0)
-        if return_samples:   
-            sample_idx = np.arange(deconf_X.shape[0])
-            np.random.shuffle(sample_idx)
-            self.deconf_X = deconf_X[sample_idx]
-            self.deconf_Y = deconf_Y[sample_idx]
+                cwgmms.write(i, intv_value, pi_est_intv, mus_est_intv, Sigmas_est_intv, cov_type[i])    
+            deconf_samples_intv_i = gmms.sample_from_gmm(pi_est_intv, mus_est_intv, Sigmas_est_intv,
+                                                        n_samples[i], cov_type=cov_type[i])
+            deconf_X = np.concatenate((deconf_X, deconf_samples_intv_i), axis = 0)
+            deconf_Y = np.concatenate((deconf_Y, np.array([intv_value for j in range(n_samples[i])]).reshape(-1,1)), axis = 0)
+        
+        sample_idx = np.arange(deconf_X.shape[0])
+        np.random.shuffle(sample_idx)
+        self.deconf_X = deconf_X[sample_idx]
+        self.deconf_Y = deconf_Y[sample_idx]
         
         if return_model and return_samples:
             return self.deconf_X, self.deconf_Y, cwgmms
