@@ -2,15 +2,19 @@
 import numpy as np
 import pandas as pd
 import cv2 as cv
+from keras.datasets import mnist
 semi_syn_data_dir = "E:/Happiness_source/PhD/UoB/projects/Mechanism Learning/code/dataset/simu_data/semi_synthetic_data/"
 raw_data_dir = semi_syn_data_dir + "raw_data/"
 frontdoor_data_dir = semi_syn_data_dir + "frontdoor_data/"
+(train_X, train_y), (test_X, test_y) = mnist.load_data()
 #%% Manipulate data
-
+data_2 = train_X[train_y == 2].reshape(-1, 28*28)
+data_6 = train_X[train_y == 6].reshape(-1, 28*28)
+data = np.vstack((data_2, data_6))
 # Load image data
-data_2 = pd.read_csv(raw_data_dir + "data_digit2.csv", header=None)
-data_6 = pd.read_csv(raw_data_dir + "data_digit6.csv", header=None)
-data = np.vstack((data_2.to_numpy(), data_6.to_numpy()))
+# data_2 = pd.read_csv(raw_data_dir + "data_digit2.csv", header=None)
+# data_6 = pd.read_csv(raw_data_dir + "data_digit6.csv", header=None)
+# data = np.vstack((data_2.to_numpy(), data_6.to_numpy()))
 labels = np.vstack((2*np.ones((data_2.shape[0], 1)), 6 * np.ones((data_6.shape[0], 1))))
 N = data.shape[0]
 digits = [2,6]
@@ -58,7 +62,7 @@ for e_idx in range(Ne):
     ])  # Shape (2,2)
 
     # Draw (continuous) confounder variable U
-    M = int(round(len(ie[e_idx]) * 0.90))
+    M = int(round(len(ie[e_idx]) * 0.95))
     usig = 5
     umu = 0
     U[e_idx] = rng_randn.normal(loc=umu, scale=usig, size=M)
