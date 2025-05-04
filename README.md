@@ -52,7 +52,7 @@ in the root directory of the decompressed package.
 
 To import the package:
 ```python
-import mechanismlearn as ml
+from mechanism_learn import pipeline as mlpipe
 ```
 
 ## Demo. for classification task
