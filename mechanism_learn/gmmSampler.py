@@ -115,7 +115,7 @@ def kmeans_plus_plus_init(X, weights, K, random_seed=None):
     return np.array(centers)
 
 # @profile
-def weighted_gmm_em(X, weights, K, cov_type = 'full', cov_reg = 1e-6, min_variance_value=1e-6, max_iter=1000, tol=1e-7, init_method='random', user_assigned_mus = None, random_seed=None):
+def weighted_gmm_em(X, weights, K, cov_type = 'full', cov_reg = 1e-6, min_variance_value=1e-6, max_iter=1000, tol=1e-7, init_method='random', user_assigned_mus = None, random_seed=None, show_progress_bar=True):
     """
     Using EM algorithm to fit a weighted GMM model.
     
@@ -162,7 +162,7 @@ def weighted_gmm_em(X, weights, K, cov_type = 'full', cov_reg = 1e-6, min_varian
     elif init_method == 'user_assigned':
         mus = user_assigned_mus
     else:
-        raise ValueError("init_method 参数错误!")
+        raise ValueError("init_method must be 'random', 'kmeans++' or 'user_assigned'!")
         
     overall_cov = np.cov(X.T, aweights=w)
     
@@ -179,12 +179,12 @@ def weighted_gmm_em(X, weights, K, cov_type = 'full', cov_reg = 1e-6, min_varian
         elif cov_type == 'spherical':
             overall_cov = np.mean(np.diag(overall_cov))
         elif cov_type != 'full':
-            raise ValueError("cov_type 参数错误!")
+            raise ValueError("cov_type must be 'full', 'diag' or 'spherical'!")
     Sigmas = np.array([overall_cov.copy() for _ in range(K)])
 
     logliks = []
     prev_loglik = -np.inf
-    pbar = tqdm(range(max_iter), desc="E-M optimization", unit="itr", leave=False)
+    pbar = tqdm(range(max_iter), desc="E-M optimization", unit="itr", leave=False, disable = (not show_progress_bar))
     for it in pbar:
         # E-step
         # Compute responsibility score
@@ -265,7 +265,7 @@ def weighted_gmm_em(X, weights, K, cov_type = 'full', cov_reg = 1e-6, min_varian
             break
         prev_loglik = loglik
         if it == max_iter-1:
-            warnings.warn("Warning: EM reached max_iter without convergence!")
+            warnings.warn("EM reached max_iter without convergence!")
     pbar.close()
 
     return pi, mus, Sigmas, logliks, avg_loglik_score

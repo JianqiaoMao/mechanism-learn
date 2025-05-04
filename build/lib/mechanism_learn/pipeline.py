@@ -137,7 +137,7 @@ class mechanism_learning_process:
     def cwgmm_resample(self, comp_k, n_samples = None, 
                        max_iter = 1000, tol = 1e-4, init_method = "kmeans++", 
                        cov_type = "full", cov_reg = 1e-6, min_variance_value=1e-6, 
-                       random_seed=None, return_model = False, return_samples = False
+                       random_seed=None, verbose = 2, return_model = False, return_samples = False
                        ):
         """
         This function performs the CW-GMM resampling.
@@ -161,6 +161,8 @@ class mechanism_learning_process:
                 The minimum variance value for the GMM fitting. If a list, it should have the same length as intv_values.
         random_seed: int, Default: None
             The random seed for the GMM fitting.
+        verbose: int, Default: 2
+            The verbosity level for the GMM fitting. 0: no progress bar, 1: show GMM progress bar, 2: show both GMM and intv progress bar.
         return_model: bool, Default: False
             Whether to return the fitted GMM model.
         return_samples: bool, Default: False
@@ -193,13 +195,23 @@ class mechanism_learning_process:
             raise ValueError("n_samples should be specified when return_samples is True.")
         if isinstance(n_samples, int):
             n_samples = [n_samples for i in range(len(self.intv_values))]
-
         if len(comp_k) != len(self.intv_values):
             raise ValueError("comp_k should be a list of the same length as intv_values.")
+        if verbose == 2:
+            show_gmm_progress_bar = True
+            show_intv_progress_bar = True
+        elif verbose == 1:
+            show_gmm_progress_bar = False
+            show_intv_progress_bar = True
+        elif verbose == 0:
+            show_gmm_progress_bar = False
+            show_intv_progress_bar = False
+        else:
+            raise ValueError("verbose should be 0 or 1.")
         cwgmms = gmms.CWGMMs()
         deconf_X = np.zeros((0,self.effect_data.shape[1]))
         deconf_Y = np.zeros((0,self.cause_data.shape[1]))
-        pbar = tqdm(enumerate(self.intv_values), total = len(self.intv_values), desc = "CW-GMM Resampling")
+        pbar = tqdm(enumerate(self.intv_values), total = len(self.intv_values), desc = "CW-GMM Resampling", disable = not show_intv_progress_bar)
         for i, intv_value in pbar:
             causal_weights_i = self.causal_weights[:,i]*self.N
             pi_est_intv, mus_est_intv, Sigmas_est_intv, _, _ = gmms.weighted_gmm_em(
@@ -207,7 +219,7 @@ class mechanism_learning_process:
                                                                cov_type=cov_type[i], max_iter=max_iter[i], tol=tol[i], 
                                                                init_method=init_method[i],
                                                                cov_reg=cov_reg[i], min_variance_value=min_variance_value[i],
-                                                               random_seed=random_seed)   
+                                                               random_seed=random_seed, show_progress_bar=show_gmm_progress_bar)   
             if return_model:
                 cwgmms.write(i, intv_value, pi_est_intv, mus_est_intv, Sigmas_est_intv, cov_type[i])  
             if return_samples:     
@@ -228,7 +240,7 @@ class mechanism_learning_process:
         if return_model:
             return cwgmms
             
-    def cb_resample(self, n_samples, cb_mode = "fast", return_samples = False, random_seed=None):
+    def cb_resample(self, n_samples, cb_mode = "fast", return_samples = False, random_seed=None, verbose = 1):
         """
         This function performs the causal bootstrapping resampling.
         
@@ -241,7 +253,9 @@ class mechanism_learning_process:
             Whether to return the generated samples.
         random_seed: int, Default: None
             The random seed for the causal bootstrapping.
-        
+        verbose: int, Default: 1
+            The verbosity level for the causal bootstrapping. 0: no progress bar, 1: show intv progress bar.
+                    
         Returns:
         deconf_X: np.ndarray
             The generated samples of X so as the deconfounded X.
@@ -251,9 +265,15 @@ class mechanism_learning_process:
         
         if isinstance(n_samples, int):
             n_samples = [n_samples for i in range(len(self.intv_values))]
+        if verbose == 1:
+            show_intv_progress_bar = True
+        elif verbose == 0:
+            show_intv_progress_bar = False
+        else:
+            raise ValueError("verbose should be 0 or 1.")
         
         cb_data = {}
-        pbar = tqdm(enumerate(self.intv_values), total = len(self.intv_values), desc = "CB Resampling")
+        pbar = tqdm(enumerate(self.intv_values), total = len(self.intv_values), desc = "CB Resampling", disable = not show_intv_progress_bar)
         for i, intv_value in pbar:
             cause_data = {self.cause_var_name: self.cause_data}
             mediator_data = {self.mechanism_var_name: self.mechanism_data}
