@@ -202,7 +202,7 @@ class mechanism_learning_process:
         else:
             raise ValueError("verbose should be 0 or 1.")
         
-        pbar = tqdm(enumerate(self.intv_values), total = len(self.intv_values), desc = "CW-GMM Resampling", disable = not show_intv_progress_bar)
+        pbar = tqdm(enumerate(self.intv_values), total = len(self.intv_values), desc = "CW-GMMs fitting", disable = not show_intv_progress_bar, unit = "model")
         for i, intv_value in pbar:
             causal_weights_i = self.causal_weights[:,i]*self.N
             pi_est_intv, mus_est_intv, Sigmas_est_intv, _, avg_loglik_score_itv, AIC_itv, BIC_itv = gmms.weighted_gmm_em(
@@ -213,7 +213,7 @@ class mechanism_learning_process:
                                                                     random_seed=random_seed, show_progress_bar=show_gmm_progress_bar)   
             self.cwgmm_model.write(i, intv_value, pi_est_intv, mus_est_intv, Sigmas_est_intv, cov_type[i])  
             self.cwgmm_model.score_update(i, AIC_itv, BIC_itv, avg_loglik_score_itv)
-
+        pbar.close()
         if return_model:
             return self.cwgmm_model
         
