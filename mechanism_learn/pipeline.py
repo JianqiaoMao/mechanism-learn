@@ -36,6 +36,8 @@ class mechanism_learning_process:
             self.dist_map = dist_map
         self.causal_weights = self.frontdoor_causal_weights()
         
+        self.cwgmm_model = gmms.CWGMMs()
+        
         self.deconf_X = np.zeros((0,self.effect_data.shape[1]))
         self.deconf_Y = np.zeros((0,self.cause_data.shape[1]))
         self.deconf_model = None
@@ -134,19 +136,16 @@ class mechanism_learning_process:
         
         return causal_weights
         
-    def cwgmm_resample(self, comp_k, n_samples = None, 
-                       max_iter = 1000, tol = 1e-4, init_method = "kmeans++", 
-                       cov_type = "full", cov_reg = 1e-6, min_variance_value=1e-6, 
-                       random_seed=None, verbose = 2, return_model = False, return_samples = False
-                       ):
+    def cwgmm_fit(self, comp_k,
+                  max_iter = 1000, tol = 1e-4, init_method = "kmeans++", 
+                  cov_type = "full", cov_reg = 1e-6, min_variance_value=1e-6, 
+                  random_seed=None, verbose = 2, return_model = False):
         """
         This function performs the CW-GMM resampling.
         
         Parameters:
         comp_k: int or list of int
             The number of components for the GMM. If a list, it should have the same length as intv_values.
-        n_samples: int or list of int, Default: None
-            The number of samples to be generated. If a list, it should have the same length as intv_values.
         max_iter: int or list of int, Default: 1000
             The maximum number of iterations for the GMM fitting. If a list, it should have the same length as intv_values.
         tol: float or list of float, Default: 1e-4
@@ -165,8 +164,6 @@ class mechanism_learning_process:
             The verbosity level for the GMM fitting. 0: no progress bar, 1: show GMM progress bar, 2: show both GMM and intv progress bar.
         return_model: bool, Default: False
             Whether to return the fitted GMM model.
-        return_samples: bool, Default: False
-            Whether to return the generated samples.
         
         Returns:
         deconf_X: np.ndarray
@@ -191,10 +188,6 @@ class mechanism_learning_process:
             cov_reg = [cov_reg for i in range(len(self.intv_values))]
         if isinstance(min_variance_value, float) or isinstance(min_variance_value, int):
             min_variance_value = [min_variance_value for i in range(len(self.intv_values))]
-        if return_samples and n_samples is None:
-            raise ValueError("n_samples should be specified when return_samples is True.")
-        if isinstance(n_samples, int):
-            n_samples = [n_samples for i in range(len(self.intv_values))]
         if len(comp_k) != len(self.intv_values):
             raise ValueError("comp_k should be a list of the same length as intv_values.")
         if verbose == 2:
@@ -208,36 +201,44 @@ class mechanism_learning_process:
             show_intv_progress_bar = False
         else:
             raise ValueError("verbose should be 0 or 1.")
-        cwgmms = gmms.CWGMMs()
-        deconf_X = np.zeros((0,self.effect_data.shape[1]))
-        deconf_Y = np.zeros((0,self.cause_data.shape[1]))
+        
         pbar = tqdm(enumerate(self.intv_values), total = len(self.intv_values), desc = "CW-GMM Resampling", disable = not show_intv_progress_bar)
         for i, intv_value in pbar:
             causal_weights_i = self.causal_weights[:,i]*self.N
-            pi_est_intv, mus_est_intv, Sigmas_est_intv, _, _ = gmms.weighted_gmm_em(
-                                                               self.effect_data, causal_weights_i, K=comp_k[i], 
-                                                               cov_type=cov_type[i], max_iter=max_iter[i], tol=tol[i], 
-                                                               init_method=init_method[i],
-                                                               cov_reg=cov_reg[i], min_variance_value=min_variance_value[i],
-                                                               random_seed=random_seed, show_progress_bar=show_gmm_progress_bar)   
-            if return_model:
-                cwgmms.write(i, intv_value, pi_est_intv, mus_est_intv, Sigmas_est_intv, cov_type[i])    
-            deconf_samples_intv_i = gmms.sample_from_gmm(pi_est_intv, mus_est_intv, Sigmas_est_intv,
-                                                        n_samples[i], cov_type=cov_type[i])
-            deconf_X = np.concatenate((deconf_X, deconf_samples_intv_i), axis = 0)
-            deconf_Y = np.concatenate((deconf_Y, np.array([intv_value for j in range(n_samples[i])]).reshape(-1,1)), axis = 0)
-        
-        sample_idx = np.arange(deconf_X.shape[0])
-        np.random.shuffle(sample_idx)
-        self.deconf_X = deconf_X[sample_idx]
-        self.deconf_Y = deconf_Y[sample_idx]
-        
-        if return_model and return_samples:
-            return self.deconf_X, self.deconf_Y, cwgmms
-        if return_samples:
-            return self.deconf_X, self.deconf_Y    
+            pi_est_intv, mus_est_intv, Sigmas_est_intv, _, avg_loglik_score_itv, AIC_itv, BIC_itv = gmms.weighted_gmm_em(
+                                                                    self.effect_data, causal_weights_i, K=comp_k[i], 
+                                                                    cov_type=cov_type[i], max_iter=max_iter[i], tol=tol[i], 
+                                                                    init_method=init_method[i],
+                                                                    cov_reg=cov_reg[i], min_variance_value=min_variance_value[i],
+                                                                    random_seed=random_seed, show_progress_bar=show_gmm_progress_bar)   
+            self.cwgmm_model.write(i, intv_value, pi_est_intv, mus_est_intv, Sigmas_est_intv, cov_type[i])  
+            self.cwgmm_model.score_update(i, AIC_itv, BIC_itv, avg_loglik_score_itv)
+
         if return_model:
-            return cwgmms
+            return self.cwgmm_model
+        
+    def cwgmm_resample(self, n_samples, return_samples = False):
+        """
+        This function performs the CW-GMM resampling.
+        Parameters:
+        n_samples: int or list of int
+            The number of samples to be generated. If a list, it should have the same length as intv_values.
+        return_samples: bool, Default: False
+            Whether to return the generated samples, or keep the samples in the class attributes.
+            
+        Returns:
+        deconf_X: np.ndarray
+            The generated samples of X so as the deconfounded X.
+        deconf_Y: np.ndarray
+            The corresponding interventional values so as the deconfounded Y.
+        """
+        self.deconf_X, self.deconf_Y = self.cwgmm_model.sample(n_samples)
+        sample_idx = np.arange(self.deconf_X.shape[0])
+        np.random.shuffle(sample_idx)
+        self.deconf_X = self.deconf_X[sample_idx]
+        self.deconf_Y = self.deconf_Y[sample_idx]
+        if return_samples:
+            return self.deconf_X, self.deconf_Y
             
     def cb_resample(self, n_samples, cb_mode = "fast", return_samples = False, random_seed=None, verbose = 1):
         """
@@ -320,3 +321,4 @@ class mechanism_learning_process:
         
     
     
+# %%

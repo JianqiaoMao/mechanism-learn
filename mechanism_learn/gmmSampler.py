@@ -114,7 +114,6 @@ def kmeans_plus_plus_init(X, weights, K, random_seed=None):
     
     return np.array(centers)
 
-# @profile
 def weighted_gmm_em(X, weights, K, cov_type = 'full', cov_reg = 1e-6, min_variance_value=1e-6, max_iter=1000, tol=1e-7, init_method='random', user_assigned_mus = None, random_seed=None, show_progress_bar=True):
     """
     Using EM algorithm to fit a weighted GMM model.
@@ -138,6 +137,8 @@ def weighted_gmm_em(X, weights, K, cov_type = 'full', cov_reg = 1e-6, min_varian
     Sigmas: shape=(K, d, d) covariance matrices of each component
     logliks: list of log-likelihood values at each iteration
     avg_loglik_score: average log-likelihood score
+    AIC: Akaike Information Criterion
+    BIC: Bayesian Information Criterion
     
     """
 
@@ -146,6 +147,7 @@ def weighted_gmm_em(X, weights, K, cov_type = 'full', cov_reg = 1e-6, min_varian
 
     N, d = X.shape
     w = np.asarray(weights, dtype=float)
+    w = w / np.sum(w)  # Normalize weights to sum to 1
     if len(w) != N:
         raise ValueError("The length of weights must be equal to the number of data points!")
     if np.any(w < 0):
@@ -267,8 +269,19 @@ def weighted_gmm_em(X, weights, K, cov_type = 'full', cov_reg = 1e-6, min_varian
         if it == max_iter-1:
             warnings.warn("EM reached max_iter without convergence!")
     pbar.close()
+    
+    if cov_type == 'full':
+        params_per_comp = d + d*(d+1)/2
+    elif cov_type == 'diag':
+        params_per_comp = d + d
+    elif cov_type == 'spherical':
+        params_per_comp = d + 1
+    k = (K - 1) + K * params_per_comp
 
-    return pi, mus, Sigmas, logliks, avg_loglik_score
+    AIC = 2*k - 2*loglik
+    BIC = np.log(total_weight)*k - 2*loglik
+
+    return pi, mus, Sigmas, logliks, avg_loglik_score, AIC, BIC
 
 def sample_from_gmm(pi, mus, Sigmas, num_samples, cov_type='full'):
     """
@@ -307,16 +320,93 @@ def sample_from_gmm(pi, mus, Sigmas, num_samples, cov_type='full'):
     samples = np.vstack(samples_list)
     return samples
 
+def load_CWGMMs(model_path):
+    """
+    Load a CWGMMs model from a file.
+    Parameters:
+    model_path: str, path to the model file
+    Returns:
+    cw_gmms: CWGMMs object with loaded parameters, scores and fit_flag
+    """
+    with open(model_path, 'rb') as f:
+        model_info = pickle.load(f)
+    cw_gmms = CWGMMs()
+    cw_gmms.params = model_info['params']
+    cw_gmms.scores = model_info['scores']
+    cw_gmms.fit_flag = model_info['fit_flag']
+    
+    if not cw_gmms.fit_flag:
+        warnings.warn("The loaded CWGMMs model is not fitted yet!")
+    
+    return cw_gmms
+
+def compare_nested_params(param_dict1, param_dict2):
+    """
+    Compare two nested dictionaries of parameters.
+    """
+
+    if set(param_dict1.keys()) != set(param_dict2.keys()):
+        return False
+
+    for key in param_dict1:
+        v1, v2 = param_dict1[key], param_dict2[key]
+
+
+        if isinstance(v1, dict) and isinstance(v2, dict):
+            if not compare_nested_params(v1, v2):
+                return False
+        
+        elif isinstance(v1, np.ndarray) and isinstance(v2, np.ndarray):
+            if not np.array_equal(v1, v2):
+                return False
+        
+        else:
+            if v1 != v2:
+                return False
+    
+    return True
+
 class CWGMMs:
     
     """
-    A class to store and sample from multiple GMMs.
+    A class to store and sample from a stack of GMMs corresponding to different intervention values.
+    
+    Attributes:
+    params: dict, stores GMM parameters for each model
+    scores: dict, stores AIC, BIC and average log-likelihood scores for each model
+    fit_flag: bool, indicates whether the model has been fitted
+    
+    Methods:
+    score_update: update the scores for a GMM model
+    write: write the GMM parameters to the params dictionary
+    save: save the model parameters and scores to a file
+    sample: sample from the GMMs
+    evaluate_density: evaluate the density of the GMMs at given query points
     """
 
     def __init__(self):
         self.params = {}
+        self.scores = {}
+        self.fit_flag = False
+
+    def score_update(self, model_name, AIC, BIC, avg_loglik_score):
+        """
+        Store the score for a GMM model.
+        
+        Parameters:
+        model_name: str, name of the GMM model
+        score: float, score value to store
+        """
+        self.scores[model_name] = {
+            'AIC': AIC,
+            'BIC': BIC,
+            "avg_loglik_score": avg_loglik_score
+        }
         
     def write(self, model_name, intv_value, pi, mus, Sigmas, cov_type):
+        """
+        Write the GMM parameters to the params dictionary.
+        """
         self.params[model_name] = {
             'intv_value': intv_value,
             'pi': pi,
@@ -324,6 +414,7 @@ class CWGMMs:
             'Sigmas': Sigmas,
             'cov_type': cov_type
         }
+        self.fit_flag = True
     
     def save(self, f_name, path = None):
         if path is None:
@@ -337,8 +428,26 @@ class CWGMMs:
         f_name = os.path.join(path, f_name + '.pkl')
         
         with open(f_name, 'wb') as f:
-            pickle.dump(self.params, f)
-    
+            # Save the parameters, scores and fit_flag
+            model_info_to_save = {
+                'params': self.params,
+                'scores': self.scores,
+                'fit_flag': self.fit_flag
+            }
+            pickle.dump(model_info_to_save, f)
+        
+        # Check if the file was saved successfully
+        test_load_model = load_CWGMMs(f_name)
+        consistency_check = compare_nested_params(self.params, test_load_model.params) and \
+                            (self.scores == test_load_model.scores) and \
+                            (self.fit_flag == test_load_model.fit_flag)
+        if not consistency_check:
+            # delete the file if it was not saved correctly
+            os.remove(f_name)
+            raise ValueError("Failed to save the model correctly.")
+        else:
+            print(f"Model saved successfully at {f_name}.")
+
     def sample(self, n_samples):
         if isinstance(n_samples, int):
             n_samples = [n_samples for _ in range(len(self.params))]
@@ -363,6 +472,45 @@ class CWGMMs:
         intv_values = np.concatenate(intv_values, axis=0)
         intv_values = intv_values.reshape(-1, 1)
         return new_samples, intv_values
+    
+    def evaluate_density(self, x_query_batch):
+        """
+        Evaluate p(x_i | Y_j) for each x_i in x_query_batch and each GMM model.
+
+        Parameters:
+        x_query_batch: shape=(N, d) numpy array
+
+        Returns:
+        p_matrix: shape=(N, M) array where entry (i, j) = p(x_i | Y_j)
+        """
+        x_query_batch = np.atleast_2d(x_query_batch)
+        N, d = x_query_batch.shape
+
+        p_matrix = []
+
+        for model_name, params in self.params.items():
+            pi = params['pi']            # (K,)
+            mus = params['mus']          # (K, d)
+            Sigmas = params['Sigmas']    # (K, d, d) or diag/spherical
+            cov_type = params['cov_type']
+
+            K = len(pi)
+            log_probs_k = np.zeros((N, K))  # shape=(N, K)
+
+            for k in range(K):
+                log_pdf = log_gaussian_pdf(x_query_batch, mus[k], Sigmas[k], cov_type=cov_type)  # shape=(N,)
+                log_probs_k[:, k] = np.log(pi[k] + 1e-16) + log_pdf
+
+            # log-sum-exp over K components
+            max_log = np.max(log_probs_k, axis=1, keepdims=True)  # shape=(N,1)
+            log_sum = max_log + np.log(np.sum(np.exp(log_probs_k - max_log), axis=1, keepdims=True) + 1e-16)  # shape=(N,1)
+            p_x_given_y = np.exp(log_sum).flatten()  # shape=(N,)
+
+            p_matrix.append(p_x_given_y)
+
+        p_matrix = np.stack(p_matrix, axis=1) # shape=(N, M)
+
+        return p_matrix
         
 
 
