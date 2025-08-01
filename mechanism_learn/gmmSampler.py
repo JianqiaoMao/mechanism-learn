@@ -114,7 +114,16 @@ def kmeans_plus_plus_init(X, weights, K, random_seed=None):
     
     return np.array(centers)
 
-def weighted_gmm_em(X, weights, K, cov_type = 'full', cov_reg = 1e-6, min_variance_value=1e-6, max_iter=1000, tol=1e-7, init_method='random', user_assigned_mus = None, random_seed=None, show_progress_bar=True):
+def weighted_gmm_em(X, weights, K,
+                    cov_type='full',
+                    cov_reg=1e-6,
+                    min_variance_value=1e-6,
+                    max_iter=1000,
+                    tol=1e-7,
+                    init_method='random',
+                    user_assigned_mus=None,
+                    random_seed=None,
+                    show_progress_bar=True):
     """
     Using EM algorithm to fit a weighted GMM model.
     
@@ -131,14 +140,14 @@ def weighted_gmm_em(X, weights, K, cov_type = 'full', cov_reg = 1e-6, min_varian
     user_assigned_mus: shape=(K, d), user assigned initial means, only used when init_method='user_assigned'
     random_seed: int, random seed for reproducibility, default is None
     
-    Return: pi, mus, Sigmas, logliks, avg_loglik_score
+    Return: pi, mus, Sigmas, logliks, avg_loglik_score, AIC, BIC
     pi: shape=(K,) mixing coefficients
     mus: shape=(K, d) means of each component
-    Sigmas: shape=(K, d, d) covariance matrices of each component
+    Sigmas: shape=(K, d, d), or (K, d) or (K,) covariance matrices of each component
     logliks: list of log-likelihood values at each iteration
-    avg_loglik_score: average log-likelihood score
-    AIC: Akaike Information Criterion
-    BIC: Bayesian Information Criterion
+    avg_loglik_score: float, average log-likelihood score
+    AIC: float, Akaike Information Criterion
+    BIC: float, Bayesian Information Criterion
     
     """
 
@@ -146,142 +155,143 @@ def weighted_gmm_em(X, weights, K, cov_type = 'full', cov_reg = 1e-6, min_varian
         np.random.seed(random_seed)
 
     N, d = X.shape
-    w = np.asarray(weights, dtype=float)
-    w = w / np.sum(w)  # Normalize weights to sum to 1
-    if len(w) != N:
-        raise ValueError("The length of weights must be equal to the number of data points!")
-    if np.any(w < 0):
-        raise ValueError("weights must be non-negative!")
+    w = np.asarray(weights, float)
+    w = w / np.sum(w)
     total_weight = np.sum(w)
-    
-    # Initialization: pi, mus, Sigmas
+
+    # —— Initialize pi, mus, Sigmas —— #
     pi = np.ones(K) / K
     if init_method == 'random':
-        rand_idxs = np.random.choice(N, K, replace=False)
-        mus = X[rand_idxs].copy()
+        idx = np.random.choice(N, K, replace=False)
+        mus = X[idx].copy()
     elif init_method == 'kmeans++':
-        mus = kmeans_plus_plus_init(X, w, K, random_seed=random_seed)
+        mus = kmeans_plus_plus_init(X, w, K, random_seed)
     elif init_method == 'user_assigned':
-        mus = user_assigned_mus
+        mus = user_assigned_mus.copy()
     else:
         raise ValueError("init_method must be 'random', 'kmeans++' or 'user_assigned'!")
-        
+
+    # Initialize Sigmas
     overall_cov = np.cov(X.T, aweights=w)
-    
     if d == 1:
-        if cov_type == 'diag':
-            overall_cov = np.array([overall_cov])  # shape=(1,)
-        elif cov_type == 'spherical':
-            overall_cov = float(overall_cov)
-        elif cov_type == 'full':
-            overall_cov = np.array([[overall_cov]])  # shape=(1,1)
+        overall_cov = float(overall_cov)
     else:
         if cov_type == 'diag':
             overall_cov = np.diag(overall_cov)
         elif cov_type == 'spherical':
             overall_cov = np.mean(np.diag(overall_cov))
-        elif cov_type != 'full':
-            raise ValueError("cov_type must be 'full', 'diag' or 'spherical'!")
-    Sigmas = np.array([overall_cov.copy() for _ in range(K)])
+
+    # Sigmas shape (K, d, d) or (K, d) or (K,)
+    if cov_type == 'full':
+        Sigmas = np.stack([overall_cov.copy() for _ in range(K)], axis=0)
+    elif cov_type == 'diag':
+        Sigmas = np.stack([overall_cov.copy() for _ in range(K)], axis=0)  # (K, d)
+    else:  # spherical
+        Sigmas = np.array([overall_cov for _ in range(K)])                # (K,)
 
     logliks = []
     prev_loglik = -np.inf
-    pbar = tqdm(range(max_iter), desc="E-M optimization", unit="itr", leave=False, disable = (not show_progress_bar))
+    pbar = tqdm(range(max_iter), desc="EM iter", disable=not show_progress_bar)
+
     for it in pbar:
-        # E-step
-        # Compute responsibility score
-        log_resp = np.zeros((N, K))
-        log_pdf_k = np.empty((N, K))
-        for k in range(K):
-            log_pdf_k[:,k] = log_gaussian_pdf(X, mus[k], Sigmas[k], cov_type=cov_type, cov_reg=cov_reg)
-            log_resp[:, k] = np.log(pi[k] + 1e-16) + log_pdf_k[:,k]
-
-        # Softmax for numerical stability
-        max_log_resp = np.max(log_resp, axis=1, keepdims=True)  # shape=(N,1)
-        log_resp -= max_log_resp
-        resp = np.exp(log_resp)
-        denom = np.sum(resp, axis=1, keepdims=True) + 1e-16
-        resp /= denom
-
-        # M-step
-        Wk = np.sum(w[:, None] * resp, axis=0)  # shape=(K,)
-        pi = Wk / np.sum(Wk)
-        mus_new = np.zeros((K, d))
+        # —— E step：evaluate log_pdf (N, K) —— #
         if cov_type == 'full':
-            Sigmas_new = np.zeros((K, d, d))
+            # (K, d, d) + regularization
+            Sigma_reg = Sigmas + cov_reg * np.eye(d)[None, :, :]
+            sign, logdet = np.linalg.slogdet(Sigma_reg)          # (K,)
+            inv_S = np.linalg.inv(Sigma_reg)                    # (K, d, d)
+            # diff: (K, N, d)
+            diffs = X[None, :, :] - mus[:, None, :]
+            # diffs @ inv_S -> (K, N, d)
+            difvinv = np.einsum('knd,kde->kne', diffs, inv_S)
+            # quadforms (K, N)
+            quad = np.einsum('knd,knd->kn', difvinv, diffs)
+            const = d * np.log(2 * np.pi)
+            log_pdf = -0.5 * (const + logdet[:, None] + quad)    # (K, N)
+
         elif cov_type == 'diag':
-            Sigmas_new = np.zeros((K, d))
-        elif cov_type == 'spherical':
-            Sigmas_new = np.zeros(K)
-        min_variance_value = max(min_variance_value, np.var(X)/1e3)
+            # Sigmas: (K, d)
+            Sigma_safe = np.maximum(Sigmas, cov_reg)
+            inv_S = 1.0 / Sigma_safe                              # (K, d)
+            logdet = np.sum(np.log(Sigma_safe), axis=1)           # (K,)
+            diffs = X[None, :, :] - mus[:, None, :]               # (K, N, d)
+            quad = np.einsum('knd,kd->kn', diffs**2, inv_S)       # (K, N)
+            const = d * np.log(2 * np.pi)
+            log_pdf = -0.5 * (const + logdet[:, None] + quad)     # (K, N)
 
-        for k in range(K):
-            if Wk[k] < 1e-10:
-                rand_idx = np.random.choice(N)
-                mus_new[k] = X[rand_idx].copy()
-                Sigmas_new[k] = overall_cov if cov_type == 'full' else np.maximum(overall_cov, min_variance_value)
-                continue
+        else:  # spherical
+            Sigma_safe = np.maximum(Sigmas, cov_reg)              # (K,)
+            inv_S = 1.0 / Sigma_safe                              # (K,)
+            logdet = d * np.log(Sigma_safe)                       # (K,)
+            diffs = X[None, :, :] - mus[:, None, :]               # (K, N, d)
+            quad = np.sum(diffs**2, axis=2) * inv_S[:, None]       # (K, N)
+            const = d * np.log(2 * np.pi)
+            log_pdf = -0.5 * (const + logdet[:, None] + quad)     # (K, N)
 
-            mus_new[k] = np.sum(w[:,None] * resp[:,k][:,None] * X, axis=0) / Wk[k]
-            diff = X - mus_new[k]
-            if cov_type == 'full':
-                cov_k = np.zeros((d,d))
-                alpha = w * resp[:,k]
-                diff_weighted = diff * alpha[:, None]
-                cov_k = diff_weighted.T @ diff
-                cov_k /= Wk[k]
-                cov_k += cov_reg * np.eye(d)
+        log_pdf = log_pdf.T                                      # (N, K)
+        log_resp = log_pdf + np.log(pi)[None, :]                # (N, K)
+        mx = np.max(log_resp, axis=1, keepdims=True)
+        resp = np.exp(log_resp - mx)
+        resp /= resp.sum(axis=1, keepdims=True)                  # (N, K)
 
-                eigvals, eigvecs = np.linalg.eigh(cov_k)
-                eigvals = np.maximum(eigvals, min_variance_value)
-                cov_k = eigvecs @ np.diag(eigvals) @ eigvecs.T
-                Sigmas_new[k] = cov_k
+        # —— M step：update pi, mus, Sigmas —— #
+        Wk = np.sum(w[:, None] * resp, axis=0)                   # (K,)
+        pi = Wk / np.sum(Wk)                                     # (K,)
 
-            elif cov_type == 'diag':
-                cov_k = np.sum((w * resp[:,k])[:, None] * diff**2, axis=0) / Wk[k]
-                cov_k += cov_reg
-                Sigmas_new[k] = np.maximum(cov_k, min_variance_value)
+        # Updated mu: (K, d) = (resp.T * w) @ X  / Wk[:,None]
+        mus = (resp.T * w).dot(X) / Wk[:, None]
 
-            elif cov_type == 'spherical':
-                cov_k = np.sum(w * resp[:,k] * np.sum(diff**2, axis=1)) / (d * Wk[k])
-                cov_k += cov_reg
-                Sigmas_new[k] = max(cov_k, min_variance_value)
-        
-        mus = mus_new
-        Sigmas = Sigmas_new
+        # Updated Sigma: (K, d, d) / (K, d) / (K,)
+        if cov_type == 'full':
+            diffs = X[None, :, :] - mus[:, None, :]              # (K, N, d)
+            alpha = resp.T * w                                  # (K, N)
+            difw = diffs * alpha[:, :, None]                    # (K, N, d)
+            covs = np.einsum('kni, knj->kij', difw, diffs)       # (K, d, d)
+            covs /= Wk[:, None, None]
+            covs += cov_reg * np.eye(d)[None, :, :]
 
-        # Compute weighted log-likelihood
-        log_pdf_new = np.empty((N, K))
-        for k in range(K):
-            log_pdf_new[:,k] = log_gaussian_pdf(X, mus[k], Sigmas[k], cov_type=cov_type, cov_reg=cov_reg)
+            eigvals, eigvecs = np.linalg.eigh(covs)            # (K, d), (K, d, d)
+            eigvals = np.maximum(eigvals, min_variance_value)
+            Sigmas = np.einsum('kji, kj, kjk->kik', eigvecs, eigvals, eigvecs)
 
-        log_pdf_weighted = log_pdf_new + np.log(pi + 1e-16)  # shape=(N, K)
-        max_log = np.max(log_pdf_weighted, axis=1, keepdims=True)
-        logsumexp = max_log + np.log(np.sum(np.exp(log_pdf_weighted - max_log), axis=1) + 1e-16)
-        loglik = np.sum(w * logsumexp)
-        avg_loglik_score = loglik / total_weight
+        elif cov_type == 'diag':
+            diffs = X[None, :, :] - mus[:, None, :]              # (K, N, d)
+            quad = np.einsum('knd,kn->kd', diffs**2, resp.T * w) # (K, d)
+            Sigmas = quad / Wk[:, None]
+            Sigmas = np.maximum(Sigmas + cov_reg, min_variance_value)
+
+        else:  # spherical
+            diffs = X[None, :, :] - mus[:, None, :]              # (K, N, d)
+            sq = np.sum(diffs**2, axis=2)                        # (K, N)
+            val = np.sum(sq * (resp.T * w), axis=1)              # (K,)
+            Sigmas = val / (d * Wk)
+            Sigmas = np.maximum(Sigmas + cov_reg, min_variance_value)
+
+        # —— Check convergence —— #
+        log_pdf_weighted = log_pdf + np.log(pi)[None, :]
+        mx2 = np.max(log_pdf_weighted, axis=1, keepdims=True)
+        lse = mx2 + np.log(np.exp(log_pdf_weighted - mx2).sum(axis=1, keepdims=True))
+        loglik = np.sum(w[:, None] * lse)
         logliks.append(loglik)
-        pbar.set_postfix({"loglik dif.": "{:.2e}".format(np.abs(loglik - prev_loglik))})
-        # Check convergence
-        if np.abs(loglik - prev_loglik) < tol:
+
+        pbar.set_postfix({"Δloglik": f"{abs(loglik - prev_loglik):.2e}"})
+        if abs(loglik - prev_loglik) < tol:
             break
         prev_loglik = loglik
-        if it == max_iter-1:
-            warnings.warn("EM reached max_iter without convergence!")
-    pbar.close()
-    
-    if cov_type == 'full':
-        params_per_comp = d + d*(d+1)/2
-    elif cov_type == 'diag':
-        params_per_comp = d + d
-    elif cov_type == 'spherical':
-        params_per_comp = d + 1
-    k = (K - 1) + K * params_per_comp
 
+    # AIC / BIC calculation
+    if cov_type == 'full':
+        params_per = d + d*(d+1)/2
+    elif cov_type == 'diag':
+        params_per = d + d
+    else:
+        params_per = d + 1
+    k = (K-1) + K*params_per
     AIC = 2*k - 2*loglik
     BIC = np.log(total_weight)*k - 2*loglik
 
-    return pi, mus, Sigmas, logliks, avg_loglik_score, AIC, BIC
+    avg_loglik = loglik / total_weight
+    return pi, mus, Sigmas, logliks, avg_loglik, AIC, BIC
 
 def sample_from_gmm(pi, mus, Sigmas, num_samples, cov_type='full'):
     """
@@ -483,34 +493,66 @@ class CWGMMs:
         Returns:
         p_matrix: shape=(N, M) array where entry (i, j) = p(x_i | Y_j)
         """
-        x_query_batch = np.atleast_2d(x_query_batch)
-        N, d = x_query_batch.shape
+        X = np.atleast_2d(x_query_batch)
+        N, d = X.shape
+        p_list = []
 
-        p_matrix = []
-
-        for model_name, params in self.params.items():
-            pi = params['pi']            # (K,)
-            mus = params['mus']          # (K, d)
-            Sigmas = params['Sigmas']    # (K, d, d) or diag/spherical
+        for params in self.params.values():
+            pi       = params['pi']       # (K,)
+            mus      = params['mus']      # (K, d)
+            Sigmas   = params['Sigmas']   # (K, d, d) / (K, d) / (K,)
             cov_type = params['cov_type']
+            K = pi.shape[0]
 
-            K = len(pi)
-            log_probs_k = np.zeros((N, K))  # shape=(N, K)
+            # compute log-pdf_{ik} in batch
+            if cov_type == 'full':
+                # (K, d, d) 
+                sign, logdet = np.linalg.slogdet(Sigmas)      # (K,)
+                invS = np.linalg.inv(Sigmas)                  # (K, d, d)
 
-            for k in range(K):
-                log_pdf = log_gaussian_pdf(x_query_batch, mus[k], Sigmas[k], cov_type=cov_type)  # shape=(N,)
-                log_probs_k[:, k] = np.log(pi[k] + 1e-16) + log_pdf
+                # diffs: (K, N, d)
+                diffs = X[None, :, :] - mus[:, None, :]
+                # diffs @ invS -> (K, N, d)
+                difvinv = np.einsum('knd,kde->kne', diffs, invS)
+                # quadform: (K, N)
+                quad = np.einsum('kne,kne->kn', difvinv, diffs)
 
-            # log-sum-exp over K components
-            max_log = np.max(log_probs_k, axis=1, keepdims=True)  # shape=(N,1)
-            log_sum = max_log + np.log(np.sum(np.exp(log_probs_k - max_log), axis=1, keepdims=True) + 1e-16)  # shape=(N,1)
-            p_x_given_y = np.exp(log_sum).flatten()  # shape=(N,)
+                const = d * np.log(2*np.pi)
+                # log_pdf_k: (N, K)
+                log_pdf = (-0.5 * (const + logdet[:, None] + quad)).T
 
-            p_matrix.append(p_x_given_y)
+            elif cov_type == 'diag':
+                # Sigmas: (K, d)
+                invS = 1.0 / Sigmas                        # (K, d)
+                logdet = np.sum(np.log(Sigmas), axis=1)    # (K,)
 
-        p_matrix = np.stack(p_matrix, axis=1) # shape=(N, M)
+                diffs = X[None, :, :] - mus[:, None, :]        # (K, N, d)
+                quad = np.einsum('knd,kd->kn', diffs**2, invS)  # (K, N)
 
-        return p_matrix
+                const = d * np.log(2*np.pi)
+                log_pdf = (-0.5 * (const + logdet[:, None] + quad)).T
+
+            else:  # spherical
+                invS = 1.0 / Sigmas                       # (K,)
+                logdet = d * np.log(Sigmas)               # (K,)
+
+                diffs = X[None, :, :] - mus[:, None, :]       # (K, N, d)
+                quad = np.sum(diffs**2, axis=2) * invS[:, None]# (K, N)
+
+                const = d * np.log(2*np.pi)
+                log_pdf = (-0.5 * (const + logdet[:, None] + quad)).T
+
+            # log-sum-exp
+            log_pi = np.log(pi + 1e-16)[None, :]             # (1, K)
+            log_resp = log_pdf + log_pi                     # (N, K)
+            m = np.max(log_resp, axis=1, keepdims=True)     # (N, 1)
+            lse = m + np.log(np.sum(np.exp(log_resp - m), axis=1, keepdims=True) + 1e-16)
+            p = np.exp(lse).flatten()                       # (N,)
+
+            p_list.append(p)
+
+        # 最终返回 (N, M)
+        return np.stack(p_list, axis=1)
         
 
 

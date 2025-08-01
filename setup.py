@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='mechanism-learn',
-    version='2.1.0',
+    version='2.2.0',
     author='Jianqiao Mao',
     author_email='jxm1417@student.bham.ac.uk',
     license='GPL-3.0',
