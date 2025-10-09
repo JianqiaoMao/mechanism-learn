@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mechanism-learn"
+version = "2.3.1"
+description = "Mechanism-learn is a simple method to deconfound observational data such that any appropriate machine learning model is forced to learn predictive relationships between effects and their causes, despite the potential presence of multiple unknown and unmeasured confounding. The library is compatible with most existing ML deployments. The library is compatible with most existing ML deployments such as models built with Scikit-learn and Keras."
+readme = {file = "readme.txt", content-type = "text/plain"}
+requires-python = ">=3.9"
+authors = [{name="Jianqiao Mao", email="jxm1417@student.bham.ac.uk"}]
+urls = {"Homepage" = "https://github.com/JianqiaoMao/mechanism-learn"}
+dependencies = [
+  "causalBootstrapping>=0.2.0",
+  "grapl-causal",
+  "scipy",
+  "graphviz",
+  "tqdm"
+]
+
+[tool.setuptools.packages.find]
+include = ["mechanism_learn*"]

@@ -1,6 +1,7 @@
 #%%
-import causalBootstrapping as cb
-from distEst_lib import MultivarContiDistributionEstimator
+from causalbootstrapping import workflows as wf
+from causalbootstrapping import backend as be
+from causalbootstrapping.distEst_lib import MultivarContiDistributionEstimator
 import numpy as np
 import mechanism_learn.gmmSampler as gmms
 import warnings
@@ -60,38 +61,49 @@ class mechanism_learning_process:
         """
             
         joint_yz_data = np.concatenate((self.cause_data, self.mechanism_data), axis = 1)
-        if "n_bins" in est_kwargs:
-            n_bins = est_kwargs["n_bins"]
-        else:
-            n_bins = [0 for i in range(joint_yz_data.shape[1])]
-        yz_bins = n_bins.copy()
-        y_bins = n_bins.copy()[:self.cause_data.shape[1]]
-        dist_estimator_yz = MultivarContiDistributionEstimator(data_fit=joint_yz_data, n_bins = yz_bins)
-        dist_estimator_y = MultivarContiDistributionEstimator(data_fit=self.cause_data, n_bins = y_bins)
+        dist_estimator_yz = MultivarContiDistributionEstimator(data_fit=joint_yz_data)
+        dist_estimator_y = MultivarContiDistributionEstimator(data_fit=self.cause_data)
         if est_method == "histogram":
-            pdf_yz, _ = dist_estimator_yz.fit_histogram()
-            pdf_y, _ = dist_estimator_y.fit_histogram()
+            if "n_bins" in est_kwargs:
+                n_bins = est_kwargs["n_bins"]
+            else:
+                n_bins = [0 for i in range(joint_yz_data.shape[1])]
+            yz_bins = n_bins.copy()
+            y_bins = n_bins.copy()[:self.cause_data.shape[1]]
+            pdf_yz = dist_estimator_yz.fit_histogram(n_bins = yz_bins)
+            pdf_y = dist_estimator_y.fit_histogram(n_bins = y_bins)
         elif est_method == "kde":
             if "bandwidth" in est_kwargs:
                 bandwidth = est_kwargs["bandwidth"]
             else:
                 bandwidth = "scott"
-            dist_estimator_yz.n_bins = [2 for i in range(joint_yz_data.shape[1])]
-            dist_estimator_y.n_bins = [2 for i in range(self.cause_data.shape[1])]
-            pdf_yz, _ = dist_estimator_yz.fit_kde(bandwidth)
-            pdf_y, _ = dist_estimator_y.fit_kde(bandwidth)
+            pdf_yz = dist_estimator_yz.fit_kde(bandwidth)
+            pdf_y = dist_estimator_y.fit_kde(bandwidth)
         elif est_method == "multinorm":
-            dist_estimator_yz.n_bins = [2 for i in range(joint_yz_data.shape[1])]
-            dist_estimator_y.n_bins = [2 for i in range(self.cause_data.shape[1])]
-            pdf_yz, _ = dist_estimator_yz.fit_multinorm()
-            pdf_y, _ = dist_estimator_y.fit_multinorm()
+            pdf_yz = dist_estimator_yz.fit_multinorm()
+            pdf_y = dist_estimator_y.fit_multinorm()
+        elif est_method == "kmeans":
+            if "k" in est_kwargs:
+                k = est_kwargs["k"]
+            else:
+                k = 10
+            pdf_yz = dist_estimator_yz.fit_kmeans(k)
+            pdf_y = dist_estimator_y.fit_kmeans(k)
+        elif est_method == "gmm":
+            if "n_components" in est_kwargs:
+                n_components = est_kwargs["n_components"]
+            else:
+                n_components = 10
+            pdf_yz = dist_estimator_yz.fit_gmm(n_components = n_components)
+            pdf_y = dist_estimator_y.fit_gmm(n_components = n_components)
+
         else:
             raise ValueError("Invalid estimation method. Choose 'histogram', 'kde' or 'multinorm'.")
             
         dist_map = {
-            "Y,Z": lambda Y, Z: pdf_yz([Y,Z]),
+            "intv_Y,Z": lambda intv_Y, Z: pdf_yz([intv_Y,Z]),
             "Y',Z": lambda Y_prime, Z: pdf_yz([Y_prime,Z]),
-            "Y": lambda Y: pdf_y(Y),
+            "intv_Y": lambda intv_Y: pdf_y(intv_Y),
             "Y'": lambda Y_prime: pdf_y(Y_prime)
         }
         return dist_map
@@ -117,22 +129,21 @@ class mechanism_learning_process:
         causal_graph = causal_graph + self.mechanism_var_name + "->" + self.effect_var_name + "; \n"
         causal_graph = causal_graph + self.cause_var_name + "<->" + self.effect_var_name + "; \n"
         
-        weight_func_lam, _ = cb.general_cb_analysis(causal_graph = causal_graph, 
+        weight_func_lam, _ = wf.general_cb_analysis(causal_graph = causal_graph, 
                                                     effect_var_name = self.effect_var_name, 
                                                     cause_var_name = self.cause_var_name, info_print= False)
                 
-        w_func = weight_func_lam(dist_map = self.dist_map, N = self.N, kernel = None)
-        
+        w_func, _ = weight_func_lam(dist_map = self.dist_map, 
+                                    N = self.N, 
+                                    kernel = None,
+                                    cause_intv_name_map = {self.cause_var_name: "intv_"+self.cause_var_name})
+
+        causal_weights = np.zeros((self.N, len(self.intv_values)))
         for i, intv_value in enumerate(self.intv_values):
-            causal_weights_i = cb.weight_compute(weight_func = w_func,
+            causal_weights_i = be.weight_compute(w_func = w_func,
                                                  data = data,
-                                                 intv_var = {self.cause_var_name: [intv_value for j in range(self.N)]})
-            causal_weights_i = causal_weights_i.reshape(-1,1)
-            if i == 0:
-                causal_weights = causal_weights_i
-            else:
-                # causal_weights shape: (N, num_intv_values)
-                causal_weights = np.concatenate((causal_weights, causal_weights_i), axis = 1)
+                                                 intv_dict = {"intv_" + self.cause_var_name: intv_value})
+            causal_weights[:,i] = causal_weights_i.reshape(-1)
         
         return causal_weights
         
@@ -275,16 +286,16 @@ class mechanism_learning_process:
         cb_data = {}
         pbar = tqdm(enumerate(self.intv_values), total = len(self.intv_values), desc = "CB Resampling", disable = not show_intv_progress_bar)
         for i, intv_value in pbar:
-            cause_data = {self.cause_var_name: self.cause_data}
+            cause_data = {self.cause_var_name + "'": self.cause_data}
             mediator_data = {self.mechanism_var_name: self.mechanism_data}
             effect_data = {self.effect_var_name: self.effect_data}
-            cb_data_i = cb.frontdoor_simu(cause_data = cause_data,
+            cb_data_i = wf.frontdoor_simu(cause_data = cause_data,
                                           mediator_data = mediator_data,
                                           effect_data = effect_data,
                                           dist_map = self.dist_map,
                                           mode = cb_mode,
                                           n_sample = n_samples[i],
-                                          intv_value = [intv_value for j in range(self.N)],
+                                          intv_dict = {"intv_Y": intv_value},
                                           random_state=random_seed)
             for key in cb_data_i:
                 if i == 0:
@@ -317,8 +328,5 @@ class mechanism_learning_process:
         
         self.deconf_model = ml_model.fit(self.deconf_X, self.deconf_Y.ravel())
         return self.deconf_model
-    
-        
-    
     
 # %%

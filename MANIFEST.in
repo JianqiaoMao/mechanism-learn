@@ -1,0 +1,8 @@
+include readme.txt
+include LICENSE*
+recursive-exclude test_scr *
+recursive-exclude other *
+global-exclude *.ipynb
+global-exclude __pycache__
+global-exclude *.py[cod]
+global-exclude .DS_Store
