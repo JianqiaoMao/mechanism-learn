@@ -210,7 +210,9 @@ plt.show()
 
 By running these cells, you may expect to have the output similar to below:
 
-
+<div align="center">
+  <img src="./figures/syn_clas_result.png" alt="figure3" width="300">
+</div>
 
 <p align="left"><strong>Figure 3.</strong> Comparing classifiers trained using (a) mechanism learning, (b) CB-based deconfounding and (c) classical supervised learning, on the synthetic classification dataset. With confounded data (c), class 1 samples tend to concentrate in the bottom left region, with class 2 samples in the top right. The SVM classifier's decision boundary mixes the true with the confounding boundary. By contrast, after applying CW-GMM resampling (a) and front-door CB (b) to resample the confounded dataset, the confounding factor has been nullified, such that the SVM decision boundary is close to the true class boundary. However, CW-GMM resampling has better sample variability compared to the front-door CB. </p>
 
