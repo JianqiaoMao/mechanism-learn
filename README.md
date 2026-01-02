@@ -35,6 +35,17 @@ Please use one of the following to cite the code of this repository.
 }
 ```
 
+and
+
+```
+@article{mao2025front,
+  title={Front-door Reducibility: Reducing ADMGs to the Standard Front-door Setting via a Graphical Criterion},
+  author={Mao, Jianqiao and Little, Max A},
+  journal={arXiv preprint arXiv:2511.15679},
+  year={2025}
+}
+```
+
 ## Installation and getting started
 
 We currently offer seamless installation with `pip`. 

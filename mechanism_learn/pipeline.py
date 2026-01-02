@@ -289,14 +289,14 @@ class mechanism_learning_process:
             cause_data = {self.cause_var_name + "'": self.cause_data}
             mediator_data = {self.mechanism_var_name: self.mechanism_data}
             effect_data = {self.effect_var_name: self.effect_data}
-            cb_data_i = wf.frontdoor_simu(cause_data = cause_data,
-                                          mediator_data = mediator_data,
-                                          effect_data = effect_data,
-                                          dist_map = self.dist_map,
-                                          mode = cb_mode,
-                                          n_sample = n_samples[i],
-                                          intv_dict = {"intv_Y": intv_value},
-                                          random_state=random_seed)
+            cb_data_i = wf.frontdoor_cf(cause_data = cause_data,
+                                        mediator_data = mediator_data,
+                                        effect_data = effect_data,
+                                        dist_map = self.dist_map,
+                                        sampling_mode = cb_mode,
+                                        n_sample = n_samples[i],
+                                        intv_dict = {"intv_Y": intv_value},
+                                        random_state=random_seed)
             for key in cb_data_i:
                 if i == 0:
                     cb_data[key] = cb_data_i[key]
@@ -328,5 +328,3 @@ class mechanism_learning_process:
         
         self.deconf_model = ml_model.fit(self.deconf_X, self.deconf_Y.ravel())
         return self.deconf_model
-    
-# %%
